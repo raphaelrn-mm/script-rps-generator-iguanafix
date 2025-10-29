@@ -1,0 +1,27 @@
+{
+  "name": "script-rps-generator-iguanafix",
+  "version": "1.0.0",
+  "description": "Script para geração dos arquivos de RPS da IguanaFix para a Prefeitura de Barueri",
+  "homepage": "https://github.com/raphaelrn-mm/script-rps-generator-iguanafix#readme",
+  "bugs": {
+    "url": "https://github.com/raphaelrn-mm/script-rps-generator-iguanafix/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raphaelrn-mm/script-rps-generator-iguanafix.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "minimist": "^1.2.8",
+    "moment": "^2.30.1",
+    "mysql2": "^3.15.3"
+  }
+}
