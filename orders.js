@@ -137,7 +137,7 @@ module.exports = {
               doc_tomador: documento,
               razao_tomador: order.nome || '',
               tomador_logradouro: firstJob?.addressStreet || '',
-              tomador_numero: firstJob?.addressNumber || '',
+              tomador_numero: firstJob?.addressNumber || 'S/N',
               tomador_complemento: '',
               tomador_bairro: order.bairro || '',
               tomador_cidade: order.cidade || '',

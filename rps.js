@@ -22,7 +22,7 @@ const LAYOUT = {
     campos: [
       ['fixo_num',   1,    1,    1,    '2'],                        // Tipo do Registro
       ['fixo_txt',   5,    2,    6,    'RPS'],                      // "RPS"
-      ['fixo_txt',   4,    7,    10,   ''],                         // Série do RPS
+      ['fixo_txt',   4,    7,    10,   '25S1'],                     // Série do RPS -> NOVA SERIE: 25S1
       ['fixo_txt',   5,    11,   15,   ''],                         // Série NF-e (regime especial)
       ['num',        10,   16,   25,   'numero_rps'],               // Número do RPS (3 primeiros dígitos reservados)
       ['data',       8,    26,   33,   'data_rps'],                 // AAAAMMDD
@@ -33,7 +33,7 @@ const LAYOUT = {
       ['fixo_txt',   5,    50,   54,   null],                       // se C + regime esp.
       ['fixo_txt',   8,    55,   62,   null],                       // se C
       ['fixo_txt',   180,  63,   242,  null],                       // se C
-      ['fixo_num',   9,    243,  251,  '100503216'],                // Código da atividade
+      ['fixo_num',   9,    243,  251,  '100501220'],                // Código da atividade
       ['fixo_txt',   1,    252,  252,  '2'],                        // 1=município / 2=fora (exceções)
       ['fixo_txt',   1,    253,  253,  '2'],                        // 1=em vias públicas / 2=não (exceções)
       ['texto',      75,   254,  328,  'end_servico_logradouro'],
@@ -101,6 +101,14 @@ const moneyToFixed = (v, length=15) => {
   return String(cents).padStart(length, '0').slice(-length);
 };
 
+const normalizeText = (str) => {
+  if (str === null || str === undefined) return '';
+  
+  return str.toString()
+    .normalize('NFD') // Decompõe 'ç' em 'c' + '̧' e 'á' em 'a' + '´'
+    .replace(/[\u0300-\u036f]/g, ''); // Remove os diacríticos (acentos e a cedilha)
+};
+
 function buildLine(campos, data) {
 
   // Para garantir posições, criamos um buffer do tamanho do registro:
@@ -124,9 +132,10 @@ function buildLine(campos, data) {
       case 'money':
         val = padLeftZeros(val ?? 0, tam); break;
       case 'texto':
+        val = normalizeText(val);
+        val = padRight((val ?? '').toString(), tam); break;
       case 'data':
       case 'hora':
-      case 'money':
       default:
         val = padRight((val ?? '').toString(), tam); break;
     }
@@ -147,26 +156,43 @@ function generateRemessaId(sequence = 1, month, year) {
   return `${date}${seq}`;
 }
 
-function gerarArquivoRPSChunk(orders, sequence, month, year) {
-  const inscricaoContribuinte = '4BD0910';
+function gerarArquivoRPSChunk(orders, sequence, month, year, lastRpsNumber) {
+  let mappedRpsNumbers = [];
+  const inscricaoContribuinte = '4BD0910'; 
+  //const codigoAtividade = '100501220'; 
+
   const identificacaoRemessa = generateRemessaId(sequence, month, year);
 
-  // Cabeçalho (tipo 1)
   const t1_row = {
-    inscricao_contribuinte: onlyDigits(inscricaoContribuinte).padStart(7,'0').slice(-7),
+    inscricao_contribuinte: inscricaoContribuinte,
     identificacao_remessa: onlyDigits(identificacaoRemessa).padStart(11,'0').slice(-11),
   };
   const t1 = buildLine(LAYOUT.t1.campos, t1_row) + CRLF;
 
   let linhas = [t1];
+  let linhasAdaptadas = [t1];
   let totalServicos = 0n;
   let totalLinhas = 1; // já contou o tipo 1
 
   for (const order of orders) {
     totalServicos += BigInt(order.valor_servico);
+    //const orderData = { ...order, codigo_atividade: codigoAtividade};
+    const t2 = buildLine(LAYOUT.t2.campos, order)+ CRLF;
+    linhas.push(t2);
 
-    const t2 = buildLine(LAYOUT.t2.campos, order) + CRLF;
-    linhas.push(t2); totalLinhas++;
+    // PARTE COM ADAPTAÇÕES DO RPS -- ESTA FIXO ALTERANDO PARA MES 10 PRECISA MUDAR
+    const ano = order.data_rps.substring(0, 4);
+    const dia = order.data_rps.substring(6, 8);
+    let new_data_rps = `${ano}10${dia}`;
+    let mappedNumeroRps = `${order.numero_rps};${lastRpsNumber}`
+    mappedRpsNumbers.push(mappedNumeroRps);
+    const orderDataAdaptado = { ...order, numero_rps: lastRpsNumber, data_rps: new_data_rps };
+    const t22 = buildLine(LAYOUT.t2.campos, orderDataAdaptado)+ CRLF;
+    linhasAdaptadas.push(t22);
+    lastRpsNumber++;
+    //
+
+    totalLinhas++;
   }
 
   totalServicos = totalServicos*100n; // converter para centavos
@@ -178,14 +204,23 @@ function gerarArquivoRPSChunk(orders, sequence, month, year) {
   }) + CRLF;
 
   linhas.push(t9);
+  linhasAdaptadas.push(t9);
 
   const dir = `${__dirname}/generated`;
   if (!fs.existsSync(dir)) fs.mkdirSync(dir);
 
-  const outPath = `${dir}/${identificacaoRemessa}.txt`;
+  const outPath = `${dir}/${identificacaoRemessa}_verdadeiro.txt`;//ADICIONADO VERDADEIRO NO FIM PARA SABER QUAL DEVERIA TER SIDO GERADO
   if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
+  fs.writeFileSync(outPath, linhas.join(''), { encoding: 'latin1' });
 
-  fs.writeFileSync(outPath, linhas.join(''), { encoding: 'utf8' });
+  //LOGICA PARA SALVAR O ARQUIVO ADAPTADO E O CSV DE MAPEAMENTO
+  const outPathAdaptado = `${dir}/${identificacaoRemessa}.txt`;
+  if (fs.existsSync(outPathAdaptado)) fs.unlinkSync(outPathAdaptado);
+  fs.writeFileSync(outPathAdaptado, linhasAdaptadas.join(''), { encoding: 'latin1' });
+
+  const csvContent = mappedRpsNumbers.join('\n');
+  const outPathCSV = `${dir}/${identificacaoRemessa}_mapeamento.csv`;
+  fs.writeFileSync(outPathCSV, csvContent, { encoding: 'utf8' });
 
   return { outPath, totalRPS: orders.length, totalLinhas: totalLinhas + 1, totalServicos: totalServicos.toString() };
 }
@@ -197,6 +232,8 @@ module.exports = {
       return null;
     }
 
+    let lastRpsNumber = 1; // contador global de RPS -> FALTA LOGICA DE ARMAZENAR E BUSCAR ELE SEMPRE
+
     //quebrar os registros em multiplos arquivos de 1000 rps
     const chunkSize = 1000;
     const chunks = [];
@@ -206,8 +243,9 @@ module.exports = {
 
     const results = [];
     chunks.forEach((chunk, index) => {
-      const result = gerarArquivoRPSChunk(chunk, index + 1, month, year);
+      const result = gerarArquivoRPSChunk(chunk, index + 1, month, year, lastRpsNumber);
       results.push(result);
+      lastRpsNumber += Object.keys(chunk).length;
     });
 
     return results;
