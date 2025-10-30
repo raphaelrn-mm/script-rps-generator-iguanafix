@@ -46,7 +46,22 @@ async function main(month, year) {
     const rpsData = await ordersRepository.generateBillableOrders(targetOrders);
 
     console.log('Generated RPS Data:');
-    console.log(rpsData.slice(0, 5)); // print only first 5 for brevity
+    console.log(`Total billable orders: ${rpsData.billableOrders.length}`);
+    console.log(`Total non-billable orders: ${rpsData.nonBillableOrders.length}`);
+
+    console.log(rpsData.billableOrders.slice(0, 5)); // print only first 5 for brevity
+
+    const rpsGenerator = require('./rps');
+    const result = rpsGenerator.gerarArquivoRPS(rpsData.billableOrders, month, year);
+
+    if (result) {
+        console.log('RPS generation result:');
+        console.log(result);
+    } else {
+        console.log('No RPS files generated.');
+    }
+
+    console.log('🦎 RPS generation completed.');
 
     process.exit(0);
 }

@@ -117,46 +117,44 @@ module.exports = {
                 return sum;
             }, 0) : 0;
             
-            const documento = (order.documento ? order.documento.split('|') : []).filter(d => d && d.trim().length > 0)[0] || '';
+            const documento = (order.documento ? order.documento.split('|') : []).filter(d => d && d.trim().length > 0)[0]?.trim().replace(/\D/g, '') || '';
 
             return {
-                serie_rps: '',
-                serie_nfe: '',
-                numero_rps: pedido_mm,
-                data_rps: order.max_when_date.format('YYYY-MM-DD') || '',
-                codigo_servico : '100503216',
-                local_prestacao_servico : 2,
-                servico_prestado_vias_publicas: 2,
-                logradouro_local_servico: firstJob?.addressStreet || '',
-                numero_local_servico: firstJob?.addressNumber || '',
-                complemento_local_servico: '',
-                bairro_local_servico: order.bairro || '',
-                cidade_local_servico: order.cidade || '',
-                uf_local_servico: order.uf || '',
-                cep_local_servico: order.cep ? order.cep : '',
-                quantidade_servico: 1,
-                valor_servico: ifixamount.toString(),
-                valor: ifixamount && ifixamount > 0 ? ifixamount / 100 : 0,
-                valor_retencoes: 0,
-                tomador_estrangeiro: 2,
-                tomador_pais_nacionalidade: '001',
-                servico_exportacao: 2,
-                indicador_cpf_cnpj: 1, // 1=CPF, 2=CNPJ, atualmente só CPF
-                cpf_cnpj_tomador: documento,
-                nome_tomador: order.nome || '',
-                logradouro_tomador: firstJob?.addressStreet || '',
-                numero_tomador: firstJob?.addressNumber || '',
-                complemento_tomador: '',
-                bairro_tomador: order.bairro || '',
-                cidade_tomador: order.cidade || '',
-                uf_tomador: order.uf || '',
-                cep_tomador: order.cep ? order.cep : '',
-                email_tomador: firstJob?.email || '',
-                discriminacao_servico: `Intermediação de serviços - Pedido ${pedido_mm}`,
-                jobsids: order.jobsids || '',      
+              pedido_mm: pedido_mm.toString(),
+              numero_rps: pedido_mm.toString().slice(-7),
+              data_rps: order.max_when_date.format('YYYYMMDD') || '',
+              end_servico_logradouro: firstJob?.addressStreet || '',
+              end_servico_numero: firstJob?.addressNumber || '',
+              end_servico_complemento: '',
+              end_servico_bairro: order.bairro || '',
+              end_servico_cidade: order.cidade || '',
+              end_servico_uf: order.uf || '',
+              end_servico_cep: order.cep ? order.cep : '',
+              quantidade: 1,
+              valor_servico_unitario: ifixamount || 0,
+              valor_servico: ifixamount && ifixamount > 0 ? ifixamount / 100 : 0,
+              ind_doc_tomador: documento.length === 11 ? 1 : 2,
+              doc_tomador: documento,
+              razao_tomador: order.nome || '',
+              tomador_logradouro: firstJob?.addressStreet || '',
+              tomador_numero: firstJob?.addressNumber || '',
+              tomador_complemento: '',
+              tomador_bairro: order.bairro || '',
+              tomador_cidade: order.cidade || '',
+              tomador_uf: order.uf || '',
+              tomador_cep: order.cep ? order.cep : '',
+              tomador_email: firstJob?.email || '',
+              discriminacao: `Intermediação de serviços - Pedido ${pedido_mm}`,
+              jobs_ids: order.jobsids || '', 
             };
         });
 
-        return billableOrders;
+        const billable = billableOrders.filter(order => order.valor_servico_unitario && order.valor_servico_unitario > 0);
+        const nonBillable = billableOrders.filter(order => !order.valor_servico_unitario || order.valor_servico_unitario === 0);
+
+        return {
+          billableOrders: billable,
+          nonBillableOrders: nonBillable
+        };
     }
 }
