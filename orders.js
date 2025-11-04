@@ -81,7 +81,14 @@ module.exports = {
                 mc.nome,
                 mc.cep,
                 mp.data_criacao,
-                mc.uf,
+                CASE mc.uf
+                    WHEN 'So' THEN 'PR'
+                    WHEN 'EX' THEN 'ES'
+                    WHEN 'SÃ' THEN 'SP'
+                    WHEN 'P'  THEN 'PB'
+                    WHEN 'RI' THEN 'RS'
+                    ELSE mc.uf
+                END uf,
                 mc.cidade,
                 mc.bairro
             from mm_pedido mp
