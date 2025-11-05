@@ -179,7 +179,7 @@ function gerarArquivoRPSChunk(orders, sequence, month, year, lastRpsNumber, comp
     if (company === 'triider') {
       totalServicos += BigInt(order.valor_servico_unitario);
     }
-    const t2 = buildLine(LAYOUT.t2.campos, order) + CRLF;
+    const t2 = buildLine(LAYOUT.t2.campos, {...order, numero_rps: lastRpsNumber}) + CRLF;
     linhas.push(t2);
 
     lastRpsNumber++;
@@ -214,7 +214,7 @@ module.exports = {
       return null;
     }
 
-    let lastRpsNumber = 11456; // contador global de RPS -> FALTA LOGICA DE ARMAZENAR E BUSCAR ELE SEMPRE
+    let lastRpsNumber = 23259; // esta com nome last mas na verdade é usado como next value
 
     const chunkSize = 1000;
     const chunks = [];
