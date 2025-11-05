@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug main.js",
+      "program": "${workspaceFolder}/main.js",
+      "args": [
+        "--year=2025",
+        "--month=10"
+      ],
+      "console": "integratedTerminal"
+    },
+  ]
+}
